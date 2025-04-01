@@ -1,21 +1,49 @@
 const express = require("express");
 const request = require("request");
+const path = require("path");
+
 const app = express();
 
 app.get("/download", (req, res) => {
-    const videoUrl = req.query.url; // Get the stream link from query params
+    const fileUrl = req.query.url;
+    const fileName = req.query.name || "download";
+    const fileExt = req.query.ext || "mp4";
 
-    if (!videoUrl) {
+    if (!fileUrl) {
         return res.status(400).json({ error: "No URL provided" });
     }
 
-    // Set headers to force download
-    res.setHeader("Content-Disposition", "attachment; filename=video.mp4");
-    res.setHeader("Content-Type", "video/mp4");
+    // Determine MIME type based on extension
+    const mimeTypes = {
+        "mp4": "video/mp4",
+        "webm": "audio/webm",
+        "mp3": "audio/mpeg",
+        "m4a": "audio/mp4",
+        "ogg": "audio/ogg",
+        "wav": "audio/wav",
+        "flac": "audio/flac",
+        "mov": "video/quicktime",
+        "avi": "video/x-msvideo",
+        "mkv": "video/x-matroska"
+    };
 
-    // Pipe the video stream to the response
-    request(videoUrl)
-        .on("error", () => res.status(500).json({ error: "Download failed" }))
+    const mimeType = mimeTypes[fileExt.toLowerCase()] || "application/octet-stream";
+
+    // Set headers to force download
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}.${fileExt}`);
+    res.setHeader("Content-Type", mimeType);
+
+    // Stream the file to the response
+    request(fileUrl)
+        .on("response", (response) => {
+            if (response.statusCode !== 200) {
+                return res.status(500).json({ error: "Failed to fetch file" });
+            }
+        })
+        .on("error", (err) => {
+            console.error("Download error:", err);
+            return res.status(500).json({ error: "Download failed" });
+        })
         .pipe(res);
 });
 
