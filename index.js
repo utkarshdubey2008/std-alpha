@@ -1,30 +1,23 @@
-import fetch from 'node-fetch';
+const express = require("express");
+const request = require("request");
+const app = express();
 
-app.get('/download', async (req, res) => {
-    try {
-        const { url } = req.query; // Get the streaming URL from the query parameter
-        
-        if (!url) {
-            return res.status(400).json({ error: "Missing URL parameter" });
-        }
+app.get("/download", (req, res) => {
+    const videoUrl = req.query.url; // Get the stream link from query params
 
-        // Fetch the media from the provided URL
-        const response = await fetch(url);
-        
-        // Check if the response is OK (status 200)
-        if (!response.ok) {
-            return res.status(500).json({ error: "Failed to fetch media from the URL" });
-        }
-        
-        // Set the appropriate headers to force a download (Content-Disposition)
-        res.setHeader("Content-Disposition", "attachment; filename=downloaded-media");
-        res.setHeader("Content-Type", response.headers.get('Content-Type'));
-
-        // Pipe the media data directly to the response
-        response.body.pipe(res);
-
-    } catch (error) {
-        console.error("Download error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+    if (!videoUrl) {
+        return res.status(400).json({ error: "No URL provided" });
     }
+
+    // Set headers to force download, assuming the content is audio
+    res.setHeader("Content-Disposition", "attachment; filename=audio.mp3");  
+    res.setHeader("Content-Type", "audio/mpeg");  // Adjust to appropriate audio type if needed
+
+    // Pipe the audio stream to the response
+    request(videoUrl)
+        .on("error", () => res.status(500).json({ error: "Download failed" }))
+        .pipe(res);
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
